@@ -1,0 +1,155 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Reactive.Testing;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+
+namespace Steeltoe.Informers.InformersBase.Tests.Utils
+{
+    public static class TestExtensions
+    {
+        private static TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
+
+        public static ScheduledEvent<T> ScheduleFiring<T>(this ResourceEvent<string, T> obj, long fireAt)
+        {
+            return new ScheduledEvent<T> { Event = obj, ScheduledAt = fireAt };
+        }
+
+        public static IObservable<T> TimeoutIfNotDebugging<T>(this IObservable<T> source) =>
+            source.TimeoutIfNotDebugging(DefaultTimeout);
+
+        public static IObservable<T> TimeoutIfNotDebugging<T>(this IObservable<T> source, TimeSpan timeout) =>
+            Debugger.IsAttached ? source : source.Timeout(timeout);
+
+        public static async Task TimeoutIfNotDebugging(this Task task) => await task.TimeoutIfNotDebugging(DefaultTimeout);
+        public static async Task TimeoutIfNotDebugging(this Task task, TimeSpan timeout)
+        {
+            async Task<bool> Wrapper()
+            {
+                await task;
+                return true;
+            }
+            await Wrapper().TimeoutIfNotDebugging(timeout);
+        }
+
+        public static async Task<T> TimeoutIfNotDebugging<T>(this Task<T> task) => await task.TimeoutIfNotDebugging(DefaultTimeout);
+
+        public static async Task<T> TimeoutIfNotDebugging<T>(this Task<T> task, TimeSpan timeout)
+        {
+            if (Debugger.IsAttached)
+            {
+                return await task;
+            }
+
+            using var timeoutCancellationTokenSource = new CancellationTokenSource();
+            var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
+            if (completedTask == task)
+            {
+                timeoutCancellationTokenSource.Cancel();
+                return await task; // Very important in order to propagate exceptions
+            }
+
+            throw new TimeoutException("The operation has timed out.");
+        }
+
+        public static string ToJson(this object obj, Formatting formatting = Formatting.None)
+        {
+            return JsonConvert.SerializeObject(obj, formatting, new StringEnumConverter());
+        }
+
+       
+
+        public static IObservable<ResourceEvent<string, T>> ToTestObservable<T>(this ICollection<ScheduledEvent<T>> source, TestScheduler testScheduler = null, bool startOnSubscribe = true, ILogger logger = null, bool realTime = false, int timeMultiplier = 1)
+        {
+            if (testScheduler == null)
+            {
+                testScheduler = new TestScheduler();
+            }
+
+            if (realTime)
+            {
+                return Observable.Create<ResourceEvent<string, T>>(async o =>
+                {
+                    long lastTrigger = 0;
+                    foreach (var e in source)
+                    {
+                        var sleepDelay = e.ScheduledAt * timeMultiplier - lastTrigger;
+                        await Task.Delay(TimeSpan.FromMilliseconds(sleepDelay));
+                        o.OnNext(e.Event);
+                        lastTrigger = e.ScheduledAt * timeMultiplier;
+                    }
+
+                    await Task.Delay(10);
+                    o.OnCompleted();
+                });
+            }
+            return Observable.Create<ResourceEvent<string, T>>(o =>
+            {
+                var closeAt = source.Max(x => x.ScheduledAt);
+                foreach (var e in source)
+                {
+                    testScheduler.ScheduleAbsolute(e.ScheduledAt, () => o.OnNext(e.Event));
+                }
+                testScheduler.ScheduleAbsolute(closeAt, async () =>
+                {
+                    logger?.LogTrace("Test sequence is complete");
+                    await Task.Delay(10);
+                    o.OnCompleted();
+                });
+                if (startOnSubscribe)
+                {
+                    testScheduler.Start();
+                }
+
+                return Disposable.Empty;
+            });
+        }
+        public static ResourceEvent<string, TResource> ToResourceEvent<TResource>(this TResource obj, EventTypeFlags typeFlags, TResource oldValue = default)
+        where TResource : TestResource
+        {
+            if (typeFlags.HasFlag(EventTypeFlags.Delete) && oldValue == null)
+            {
+                oldValue = obj;
+            }
+            return new ResourceEvent<string, TResource>(typeFlags, obj.Key, obj, oldValue);
+        }
+        public static ResourceEvent<string, TestResource>[] ToBasicExpected(this IEnumerable<ScheduledEvent<TestResource>> events)
+        {
+            var lastKnown = new Dictionary<string, TestResource>();
+            var retval = new List<ResourceEvent<string, TestResource>>();
+            foreach (var e in events.Select(x => x.Event))
+            {
+                var item = e;
+                if (e.EventFlags.HasFlag(EventTypeFlags.Modify) && lastKnown.TryGetValue(e.Value.Key, out var oldValue))
+                {
+                    item = new ResourceEvent<string, TestResource>(e.EventFlags, e.Key, e.Value, oldValue);
+                }
+
+                if (e.EventFlags.HasFlag(EventTypeFlags.Delete))
+                {
+                    lastKnown.Remove(e.Value.Key);
+                }
+                else
+                {
+                    if (e.Value != null)
+                    {
+                        lastKnown[e.Value.Key] = e.Value;
+                    }
+                }
+
+                retval.Add(item);
+            }
+
+            return retval.ToArray();
+        }
+    }
+}
+
