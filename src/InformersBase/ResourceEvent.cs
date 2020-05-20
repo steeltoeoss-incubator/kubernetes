@@ -13,6 +13,11 @@ namespace Steeltoe.Informers.InformersBase
     [DebuggerStepThrough]
     public struct ResourceEvent<TKey, TResource>
     {
+        public static ResourceEvent<TKey, TResource> Create(EventTypeFlags eventFlags, TKey key, TResource value = default, TResource oldValue = default) =>
+            new ResourceEvent<TKey, TResource>(eventFlags, key, value, oldValue);
+
+        public static ResourceEvent<TKey, TResource> EmptyReset { get; } = new ResourceEvent<TKey, TResource>(EventTypeFlags.ResetEmpty);
+
         public ResourceEvent(EventTypeFlags eventFlags, TKey key = default, TResource value = default, TResource oldValue = default)
         {
             if (eventFlags.HasFlag(EventTypeFlags.ResetEmpty) || eventFlags.HasFlag(EventTypeFlags.ResetEmpty))
@@ -50,7 +55,8 @@ namespace Steeltoe.Informers.InformersBase
             sb.AppendLine();
             sb.Append("   ");
             sb.Append(EventFlags);
-            sb.Append(": [");
+            sb.Append($": [Key={Key} ");
+            
             if (Value != null)
             {
                 if (includePrefix)

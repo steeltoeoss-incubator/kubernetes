@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -91,25 +92,28 @@ namespace Steeltoe.Informers.InformersBase.Tests.Utils
                     o.OnCompleted();
                 });
             }
+            var subject = new Subject<ResourceEvent<string, T>>();
+            var closeAt = source.Max(x => x.ScheduledAt);
+            foreach (var e in source)
+            {
+                testScheduler.ScheduleAbsolute(e.ScheduledAt, () => subject.OnNext(e.Event));
+            }
+            testScheduler.ScheduleAbsolute(closeAt, async () =>
+            {
+                logger?.LogTrace("Test sequence is complete");
+                await Task.Delay(10);
+                subject.OnCompleted();
+            });
             return Observable.Create<ResourceEvent<string, T>>(o =>
             {
-                var closeAt = source.Max(x => x.ScheduledAt);
-                foreach (var e in source)
+                var subscription = subject.Subscribe(o);
+                if (startOnSubscribe && !testScheduler.IsEnabled)
                 {
-                    testScheduler.ScheduleAbsolute(e.ScheduledAt, () => o.OnNext(e.Event));
-                }
-                testScheduler.ScheduleAbsolute(closeAt, async () =>
-                {
-                    logger?.LogTrace("Test sequence is complete");
-                    await Task.Delay(10);
-                    o.OnCompleted();
-                });
-                if (startOnSubscribe)
-                {
+                    
                     testScheduler.Start();
                 }
 
-                return Disposable.Empty;
+                return subscription;
             });
         }
         public static ResourceEvent<string, TResource> ToResourceEvent<TResource>(this TResource obj, EventTypeFlags typeFlags, TResource oldValue = default)

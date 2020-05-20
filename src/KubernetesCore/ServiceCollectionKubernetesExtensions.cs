@@ -18,16 +18,11 @@ namespace Steeltoe.Informers.KubernetesCore
             
             var config = configProvider();
             
-            var dummy = new Kubernetes(KubernetesClientConfiguration.BuildDefaultConfig());
-            var serializationSettings = dummy.SerializationSettings;
-            var deserilizationSettings = dummy.DeserializationSettings;
-
             void ConfigureSerializerSettings(JsonSerializerSettings settings)
             {
                 settings.ContractResolver = new ReadOnlyJsonContractResolver() {NamingStrategy = new CamelCaseNamingStrategy()};
             }
-            ConfigureSerializerSettings(serializationSettings);
-            ConfigureSerializerSettings(deserilizationSettings);
+
             services.AddHttpClient("DefaultName")
                 .AddTypedClient<IKubernetes>((httpClient, serviceProvider) =>
                 {

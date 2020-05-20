@@ -50,6 +50,7 @@ namespace Steeltoe.Informers.InformersBase
                     }
 
                     var upstreamSubscription = source
+                        .ObserveOn(Scheduler.Immediate)
                         .Subscribe(notification =>
                         {
                             if (notification.EventFlags.HasFlag(EventTypeFlags.Reset))
@@ -255,6 +256,9 @@ namespace Steeltoe.Informers.InformersBase
             });
         }
 
+        
+        
+        
         /// <summary>
         ///     Wraps an instance of <see cref="IInformer{TResource,TOptions}" /> as <see cref="IInformer{TResource}" /> by using the same
         ///     set of <see cref="TOptions" /> for every subscription

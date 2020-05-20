@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,8 +7,11 @@ namespace Steeltoe.Informers.InformersBase.Cache
 {
     public class SimpleCache<TKey, TResource> : ICache<TKey, TResource>
     {
+        private Dictionary<string, Func<TResource, List<string>>> _indexers = new Dictionary<string, Func<TResource, List<string>>>();
+        private Dictionary<string, Dictionary<string, HashSet<TKey>>> _indices = new Dictionary<string, Dictionary<string, HashSet<TKey>>>();
+
         private readonly IDictionary<TKey, TResource> _items;
-        private readonly object _syncRoot = new object();
+        protected readonly object _syncRoot = new object();
 
         public SimpleCache()
         {
@@ -19,7 +23,79 @@ namespace Steeltoe.Informers.InformersBase.Cache
             Version = version;
             _items = new Dictionary<TKey, TResource>(items);
         }
+        public List<TResource> ByIndex(string indexName, string indexKey) 
+        {
+            lock (_syncRoot)
+            {
+                if(!_indexers.ContainsKey(indexName))
+                    throw new InvalidOperationException($"Index {indexName} does not exist");
+                var index = _indices[indexName];
+                if(!index.TryGetValue(indexKey, out var set))
+                    return new List<TResource>();
+                var items = set.Select(x => _items[x]).ToList();
+                return items;
+            }
+        }
+        public void AddIndex(string indexName, Func<TResource, List<string>> indexFunc) 
+        {
+            _indices[indexName] = new Dictionary<string, HashSet<TKey>>();
+            _indexers[indexName] = indexFunc;
+        }
+        private void UpdateIndices(TResource oldObj, TResource newObj, TKey key) 
+        {
+            // if we got an old object, we need to remove it before we can add
+            // it again.
+            if (oldObj != null) 
+            {
+                DeleteFromIndices(oldObj, key);
+            }
+            foreach (var indexEntry in _indexers) 
+            {
+                var indexName = indexEntry.Key;
+                var indexFunc = indexEntry.Value;
+                var indexValues = indexFunc(newObj);
+                if (!indexValues.Any()) {
+                    continue;
+                }
 
+                if (!_indices.TryGetValue(indexName, out var index))
+                {
+                    index = new Dictionary<string, HashSet<TKey>>();
+                    _indices[indexName] = index;
+                }
+                foreach (var indexValue in indexValues) 
+                {
+                    if (!index.TryGetValue(indexValue, out var indexSet))
+                    {
+                        indexSet = new HashSet<TKey>();
+                        index[indexValue] = indexSet;
+                    }
+                    indexSet.Add(key);
+                }
+            }
+        }
+        private void DeleteFromIndices(TResource oldObj, TKey key) 
+        {
+            foreach (var indexEntry in _indexers)
+            {
+                var indexFunc = indexEntry.Value;
+                var indexValues = indexFunc(oldObj);
+                if (!indexValues.Any()) 
+                {
+                    continue;
+                }
+
+                if (!_indices.TryGetValue(indexEntry.Key, out var index))
+                    continue;
+                foreach (var indexValue in indexValues) 
+                {
+                    if(index.TryGetValue(indexValue, out var indexSet))
+                    {
+                        indexSet.Remove(key);
+                    }
+                }
+            }
+        }
         public void Reset(IDictionary<TKey, TResource> newValues)
         {
             lock (_syncRoot)
@@ -28,6 +104,7 @@ namespace Steeltoe.Informers.InformersBase.Cache
                 foreach (var item in newValues)
                 {
                     _items.Add(item.Key, item.Value);
+                    UpdateIndices(default, item.Value, item.Key);
                 }
             }
         }
@@ -58,10 +135,7 @@ namespace Steeltoe.Informers.InformersBase.Cache
 
         public void Add(KeyValuePair<TKey, TResource> item)
         {
-            lock (_syncRoot)
-            {
-                _items.Add(item);
-            }
+            Add(item.Key, item.Value);
         }
 
         public void Clear()
@@ -69,6 +143,10 @@ namespace Steeltoe.Informers.InformersBase.Cache
             lock (_syncRoot)
             {
                 _items.Clear();
+                foreach (var index in _indices.Values)
+                {
+                    index.Clear();
+                }
             }
         }
 
@@ -92,6 +170,11 @@ namespace Steeltoe.Informers.InformersBase.Cache
         {
             lock (_syncRoot)
             {
+                if (_items.TryGetValue(item.Key, out var existing))
+                {
+                    DeleteFromIndices(existing, item.Key);
+                }
+
                 return _items.Remove(item.Key);
             }
         }
@@ -114,6 +197,7 @@ namespace Steeltoe.Informers.InformersBase.Cache
             lock (_syncRoot)
             {
                 _items.Add(key, value);
+                UpdateIndices(default, value, key);
             }
         }
 
@@ -133,6 +217,7 @@ namespace Steeltoe.Informers.InformersBase.Cache
                 {
                     return false;
                 }
+                DeleteFromIndices(existing, key);
                 return true;
             }
         }
@@ -158,7 +243,9 @@ namespace Steeltoe.Informers.InformersBase.Cache
             {
                 lock (_syncRoot)
                 {
+                    _items.TryGetValue(key, out var oldValue);
                     _items[key] = value;
+                    UpdateIndices(oldValue, value, key);
                 }
             }
         }
