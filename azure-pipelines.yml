@@ -33,7 +33,7 @@ steps:
   inputs:
     command: build
     projects: Steeltoe.Informers.sln
-    arguments: '--no-restore -c $(buildConfiguration) -v n /p:TreatWarningsAsErrors=True'
+    arguments: '--no-restore -c $(buildConfiguration) -v n' # /p:TreatWarningsAsErrors=True
 - task: DotNetCoreCLI@2
   displayName: dotnet test
   inputs:
