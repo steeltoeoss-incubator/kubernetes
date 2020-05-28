@@ -25,13 +25,8 @@ namespace Steeltoe.Informers.InformersBase
         }
 
 
-        public IAsyncEnumerable<TResource> List(TOptions options, CancellationToken cancellationToken)
-        {
-            var sharedInformer = _sharedInformers.GetOrAdd(options, opt => _sharedInformerFactory(_masterInformer.WithOptions(opt)));
-            return sharedInformer.List(cancellationToken);
-        }
 
-        public IObservable<ResourceEvent<TKey, TResource>> ListWatch(TOptions options)
+        public IInformable<TKey, TResource> ListWatch(TOptions options)
         {
             var sharedInformer = _sharedInformers.GetOrAdd(options, opt => _sharedInformerFactory(_masterInformer.WithOptions(opt)));
             return sharedInformer.ListWatch();

@@ -62,4 +62,9 @@ namespace Steeltoe.Informers.InformersBase
         /// </summary>
         Computed = 512
     }
+
+    public static class EventTypeFlagsExtensions
+    {
+        public static bool IsMetaEvent(this EventTypeFlags flags) => flags.HasFlag(EventTypeFlags.ResetEmpty) || flags.HasFlag(EventTypeFlags.Delete);
+    }
 }

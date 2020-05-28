@@ -10,7 +10,7 @@ namespace Steeltoe.Informers.InformersBase
     /// <typeparam name="TResource">The type of resource</typeparam>
     public interface IInformer<TKey, TResource>
     {
-        IAsyncEnumerable<TResource> List(CancellationToken cancellationToken = default);
+        // IAsyncEnumerable<TResource> List(CancellationToken cancellationToken = default);
         /// <summary>
         ///     Exposes an Observable stream over a resource of a particular type
         /// </summary>
@@ -26,7 +26,7 @@ namespace Steeltoe.Informers.InformersBase
         /// </remarks>
         /// <param name="type">Observable type</param>
         /// <returns>Observable stream for resources of a particular type</returns>
-        IObservable<ResourceEvent<TKey, TResource>> ListWatch();
+        IInformable<TKey, TResource> ListWatch();
     }
 
     /// <summary>
@@ -37,7 +37,7 @@ namespace Steeltoe.Informers.InformersBase
     /// <typeparam name="TOptions">The type of options</typeparam>
     public interface IInformer<TKey, TResource, in TOptions>
     {
-        IAsyncEnumerable<TResource> List(TOptions options, CancellationToken cancellationToken = default);
+        // IAsyncEnumerable<TResource> List(TOptions options, CancellationToken cancellationToken = default);
         /// <summary>
         ///     Exposes an Observable stream over a resource of a particular type
         /// </summary>
@@ -54,6 +54,6 @@ namespace Steeltoe.Informers.InformersBase
         /// <param name="type">Observable type</param>
         /// <param name="options"></param>
         /// <returns></returns>
-        IObservable<ResourceEvent<TKey, TResource>> ListWatch(TOptions options);
+        IInformable<TKey, TResource> ListWatch(TOptions options);
     }
 }

@@ -56,9 +56,9 @@ namespace Steeltoe.Informers.KubernetesBase
             return new KubernetesInformerEmitter(this, options).List(cancellationToken);
         }
 
-        public IObservable<ResourceEvent<string, TResource>> ListWatch() => ListWatch(KubernetesInformerOptions.Default);
+        public IInformable<string, TResource> ListWatch() => ListWatch(KubernetesInformerOptions.Default);
 
-        public IObservable<ResourceEvent<string, TResource>> ListWatch(KubernetesInformerOptions options)
+        public IInformable<string, TResource> ListWatch(KubernetesInformerOptions options)
         {
             return new KubernetesInformerEmitter(this, options).ListWatch();
         }
@@ -106,13 +106,13 @@ namespace Steeltoe.Informers.KubernetesBase
                
             }
 
-            public IObservable<ResourceEvent<string, TResource>> ListWatch()
+            public IInformable<string, TResource> ListWatch()
             {
                 var result = Observable.Empty<ResourceEvent<string, TResource>>();
                 result = result.Concat(List());
                 result = result.Concat(Watch());
 
-                return result;
+                return result.AsInformable();
             }
 
             private IObservable<ResourceEvent<string, TResource>> List() =>

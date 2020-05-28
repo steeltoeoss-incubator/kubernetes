@@ -30,10 +30,9 @@ namespace Steeltoe.Informers.KubernetesBase
         {
         }
 
-        public IAsyncEnumerable<TResource> List(CancellationToken cancellationToken) => base.List(KubernetesInformerOptions.Default, cancellationToken);
-        
+   
         /// <inheritdoc cref="IKubernetesInformer{TResource}" />
-        public IObservable<ResourceEvent<string, TResource>> ListWatch() => base.ListWatch(KubernetesInformerOptions.Default);
+        public IInformable<string, TResource> ListWatch() => base.ListWatch(KubernetesInformerOptions.Default);
 
         private static Func<ICache<string, TResource>> GetSimpleCacheFactory()
         {

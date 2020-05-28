@@ -1,11 +1,23 @@
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Reactive.Disposables;
 
 namespace Steeltoe.Informers.InformersBase
 {
     public static class InformerExtensions
     {
+        // public static IObservable<ResourceEvent<TKey, TResource>> Where<TKey, TResource>(this IObservable<ResourceEvent<TKey, TResource>> source, Func<TResource, bool> predicate)
+        // {
+        //     return System.Reactive.Linq.Observable.Where(source, e => e.Value != null && predicate(e.Value));
+        // }
+        // public static IObservable<ResourceEvent<TKey, TResource>> Select<TKey, TResource, TResult>(this IObservable<ResourceEvent<TKey, TResource>> source, Func<TResource, TResult> selector)
+        // {
+        //     return System.Reactive.Linq.Observable.Select(source, selector(e.Value));
+        // }
+        
+        
+        
         /// <summary>
         ///     Removes an item from the dictionary
         /// </summary>
@@ -119,5 +131,30 @@ namespace Steeltoe.Informers.InformersBase
             }
         }
 
+        /// <summary>
+        ///     Wraps an instance of <see cref="IInformer{TResource,TOptions}" /> as <see cref="IInformer{TResource}" /> by using the same
+        ///     set of <see cref="TOptions" /> for every subscription
+        /// </summary>
+        /// <param name="optionedInformer">The original instance of <see cref="IInformer{TResource,TOptions}" /></param>
+        /// <param name="options">The options to use</param>
+        /// <typeparam name="TResource">The type of resource</typeparam>
+        /// <typeparam name="TOptions"></typeparam>
+        /// <returns></returns>
+        public static IInformer<TKey, TResource> WithOptions<TKey, TResource, TOptions>(this IInformer<TKey, TResource, TOptions> optionedInformer, TOptions options) =>
+            new WrappedOptionsInformer<TKey, TResource, TOptions>(optionedInformer, options);
+
+        private class WrappedOptionsInformer<TKey, TResource, TOptions> : IInformer<TKey, TResource>
+        {
+            private readonly IInformer<TKey, TResource, TOptions> _informer;
+            private readonly TOptions _options;
+
+            public WrappedOptionsInformer(IInformer<TKey, TResource, TOptions> informer, TOptions options)
+            {
+                _informer = informer;
+                _options = options;
+            }
+            
+            public IInformable<TKey, TResource> ListWatch() => _informer.ListWatch(_options);
+        }
     }
 }

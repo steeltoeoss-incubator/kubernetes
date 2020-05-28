@@ -7,14 +7,18 @@ using System.Threading;
 
 namespace Steeltoe.Informers.InformersBase
 {
+    public struct ResourceEvent
+    {
+        public static ResourceEvent<TKey, TResource> Create<TKey, TResource>(EventTypeFlags eventFlags, TKey key, TResource value = default, TResource oldValue = default) =>
+            new ResourceEvent<TKey, TResource>(eventFlags, key, value, oldValue);
+    }
     /// <summary>
     /// </summary>
     /// <typeparam name="TResource"></typeparam>
     [DebuggerStepThrough]
     public struct ResourceEvent<TKey, TResource>
     {
-        public static ResourceEvent<TKey, TResource> Create(EventTypeFlags eventFlags, TKey key, TResource value = default, TResource oldValue = default) =>
-            new ResourceEvent<TKey, TResource>(eventFlags, key, value, oldValue);
+        
 
         public static ResourceEvent<TKey, TResource> EmptyReset { get; } = new ResourceEvent<TKey, TResource>(EventTypeFlags.ResetEmpty);
 
@@ -43,8 +47,8 @@ namespace Steeltoe.Informers.InformersBase
 
         public EventTypeFlags EventFlags { get; }
         public TKey Key { get; set; }
-        public TResource OldValue { get; }
         public TResource Value { get; }
+        public TResource OldValue { get; }
         public static ResourceEvent<TKey, TResource> ResetEmpty { get; } = new ResourceEvent<TKey, TResource>(EventTypeFlags.ResetEmpty, default, default);
 
         public override string ToString()
@@ -94,13 +98,26 @@ namespace Steeltoe.Informers.InformersBase
 
     public static class ResourceEventExtensions
     {
-        public static ResourceEvent<TKey, TResource> ToResourceEvent<TKey, TResource>(this ResourceEvent<TKey, TResource> obj, EventTypeFlags typeFlags)
+        
+        public static ResourceEvent<TKey, TResource> With<TKey, TResource>(this ResourceEvent<TKey, TResource> obj, EventTypeFlags typeFlags = default, TKey key = default, TResource value = default, TResource oldValue = default)
         {
-            return new ResourceEvent<TKey, TResource>(typeFlags, obj.Key, obj.Value, obj.OldValue);
+            if (EqualityComparer<EventTypeFlags>.Default.Equals(typeFlags, default))
+                typeFlags = obj.EventFlags;
+            if (EqualityComparer<TKey>.Default.Equals(key, default))
+                key = obj.Key;
+            if (EqualityComparer<TResource>.Default.Equals(value, default))
+                value = obj.Value;
+            if (EqualityComparer<TResource>.Default.Equals(oldValue, default))
+                oldValue = obj.OldValue;
+            
+            return new ResourceEvent<TKey, TResource>(typeFlags, key, value, oldValue);
         }
-        public static ResourceEvent<TKey, TResource> ToResourceEvent<TKey, TResource>(this TResource obj, EventTypeFlags typeFlags, TKey key, TResource oldValue = default)
+
+        
+
+        public static ResourceEvent<TKey, TResource> ToResourceEvent<TKey, TResource>(this TResource obj, EventTypeFlags typeFlags = default, TKey key = default, TResource oldValue = default)
         {
-            if (typeFlags.HasFlag(EventTypeFlags.Delete) && oldValue == null)
+            if (typeFlags.HasFlag(EventTypeFlags.Delete) && EqualityComparer<TResource>.Default.Equals(oldValue, default))
             {
                 oldValue = obj;
             }
@@ -109,7 +126,7 @@ namespace Steeltoe.Informers.InformersBase
 
         public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TKey, TResource>(this IEnumerable<ResourceEvent<TKey, TResource>> source, bool emitEmpty = false)
         {
-            return ToReset(source, x => x.Key, x => x.Value, emitEmpty);
+            return ToReset(source, x => x.Key,  x => x.Value, emitEmpty);
         }
 
         /// <summary>
@@ -129,12 +146,16 @@ namespace Steeltoe.Informers.InformersBase
         {
             return ToReset(source, keySelector, x => x, emitEmpty);
         }
-        public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TKey, TResource>(this IDictionary<TKey, TResource> source, bool emitEmpty = false)
+        public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TKey, TResource>(this IDictionary<TKey, TResource> source,  bool emitEmpty = false)
         {
-            return ToReset(source, x => x.Key, x => x.Value, emitEmpty);
+            return ToReset(source, pair => pair.Key, x => x.Value, false);
         }
 
-        public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TSource, TKey, TResource>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector, Func<TSource, TResource> valueSelector, bool emitEmpty = false)
+        public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TSource, TKey, TResource>(
+            this IEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector,
+            Func<TSource, TResource> valueSelector,
+            bool emitEmpty = false)
         {
             var enumerator = ToReset(source.AsAsyncEnumerable(), keySelector, valueSelector, emitEmpty).GetAsyncEnumerator();
             do

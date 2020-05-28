@@ -60,6 +60,7 @@ namespace Steeltoe.Informers.InformersBase
                 .ListWatch()
                 .ObserveOn(_masterScheduler)
                 .Do(x => _logger.LogTrace($"Received message from upstream {x}"))
+                .AsInformable()
                 .Into(_cache)
                 .Do(msg =>
                 {
@@ -82,30 +83,7 @@ namespace Steeltoe.Informers.InformersBase
                 .Publish();
         }
 
-
-        public async IAsyncEnumerable<TResource> List([EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            // if there's already a live query running against server (due to being non-first subscriber),
-            // it's cheaper to list out of cache since we're probably already have it in memory (or in process of filling it)
-            if (_subscribers > 0) 
-            {
-                var subscription = ListWatch().Subscribe();
-                await _cacheSynchronized.Task;
-                var list = _cache.Snapshot();
-                subscription.Dispose();
-                foreach (var item in list.Values)
-                {
-                    yield return item;
-                }
-            }
-
-            await foreach (var item in _masterInformer.List(cancellationToken))
-            {
-                yield return item;
-            }
-        }
-
-        public IObservable<ResourceEvent<TKey, TResource>> ListWatch() =>
+        public IInformable<TKey, TResource> ListWatch() =>
             Observable.Using(() => new EventLoopScheduler(), childScheduler =>
                Observable.Defer(async () =>
                {
@@ -159,7 +137,8 @@ namespace Steeltoe.Informers.InformersBase
                        .SubscribeOn(childScheduler);
                })
                .SubscribeOn(childScheduler) // ensures that when we attach master observer it's done on child thread, as we plan on awaiting cache synchronization
-               .Do(_ => _logger.LogTrace($"Shared informer out: {_}")));
+               .Do(_ => _logger.LogTrace($"Shared informer out: {_}")))
+                .AsInformable();
 
 
 

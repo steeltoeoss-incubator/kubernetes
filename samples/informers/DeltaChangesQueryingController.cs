@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
@@ -8,9 +9,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using k8s.Models;
 using KellermanSoftware.CompareNetObjects;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Steeltoe.Informers.InformersBase;
+using Steeltoe.Informers.InformersBase.Cache;
 using Steeltoe.Informers.KubernetesBase;
+using Steeltoe.Informers.KubernetesBase.Cache;
 
 namespace informers
 {
@@ -34,9 +38,45 @@ namespace informers
             _objectCompare.Config.MaxDifferences = 100;
         }
 
+        public class Person
+        {
+            public string Id { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            public Address Address { get; set; }
+        }
+        
+
+        public class Address
+        {
+            public string City { get; set; }
+        }
+
+public void PersonObserver(IInformer<string, Person> personInformer)
+{
+
+}
 
         public Task Initialize(CancellationToken cancellationToken)
         {
+            KubernetesInformerContext context = new KubernetesInformerContext(); // DI injected
+            IInformer<string, Person> person = InformerFactory(); // normally would be DI injected
+            
+            var subscription = new CompositeDisposable();
+            var pods = new KubernetesCache<V1Pod>();
+            
+            
+            var podsWithServices = new SimpleCache<Tuple<string,string>,Tuple<V1Pod,V1Service>>();
+            var namespaceQuery = KubernetesInformerOptions.Builder.NamespaceEquals("default").Build();
+            ILookup<string, V1Pod> podsByService =  context.Pods
+                .ListWatch(namespaceQuery)
+                .JoinOwner(context.Services.ListWatch(namespaceQuery), Tuple.Create)
+                .GroupBy(x => x.Item1.Metadata.Name)
+                .Do((serviceName, pod, changeType) => { /* Take some action when something changes */  } )
+                .ToLookup() // load results into lookup and keep em up to date;
+                .Subscribe()
+                .DisposeWith(subscription);
+                
             _podInformer
                 .ListWatch(KubernetesInformerOptions.Builder.NamespaceEquals("default").Build())
                 // .Resync(TimeSpan.FromSeconds(10))

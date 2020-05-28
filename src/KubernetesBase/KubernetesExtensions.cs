@@ -115,6 +115,7 @@ namespace Steeltoe.Informers.KubernetesBase
 				var semaphore = new SemaphoreSlim(1);
 		        sourceStreamConnected
 			        .Do(x => semaphore.Wait())
+			        .AsInformable()
 			        .Into(children)
 			        .Select(x => x.Value)
 			        .Do(childItem =>
@@ -246,6 +247,7 @@ namespace Steeltoe.Informers.KubernetesBase
 
 		        ownerStreamConnected
 			        .Do(x => semaphore.Wait())
+			        .AsInformable()
 			        .Into(owners)
 			        .Select(x => x.Value)
 			        .Do(ownerEvent =>
