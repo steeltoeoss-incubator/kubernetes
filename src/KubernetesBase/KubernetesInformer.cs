@@ -60,7 +60,7 @@ namespace Steeltoe.Informers.KubernetesBase
 
         public IInformable<string, TResource> ListWatch(KubernetesInformerOptions options)
         {
-            return new KubernetesInformerEmitter(this, options).ListWatch();
+            return new KubernetesInformerEmitter(this, options).ListWatch(CancellationToken.None);
         }
 
         private class KubernetesInformerEmitter
@@ -106,26 +106,31 @@ namespace Steeltoe.Informers.KubernetesBase
                
             }
 
-            public IInformable<string, TResource> ListWatch()
+            public IInformable<string, TResource> ListWatch([EnumeratorCancellation] CancellationToken cancellationToken)
             {
-                var result = Observable.Empty<ResourceEvent<string, TResource>>();
-                result = result.Concat(List());
-                result = result.Concat(Watch());
-
-                return result.AsInformable();
+                return List(cancellationToken)
+                    .ToReset(x => x.Metadata.Name, x => x, true, cancellationToken)
+                    .Concat(Watch(cancellationToken))
+                    .AsInformable();
+               
+            }
+            private IObservable<ResourceEvent<string, TResource>> ListWatch()
+            {
+                return List(CancellationToken.None)
+                    .ToReset(x => x.Metadata.Name, x => x, true)
+                    .ToObservable()
+                    .Concat(Watch());
+               
             }
 
-            private IObservable<ResourceEvent<string, TResource>> List() =>
-                Observable.Create<ResourceEvent<string, TResource>>(async (observer, cancellationToken) =>
-                {
-                    await foreach (var item in List(cancellationToken).ToReset(x => x.Metadata.Name, x => x, true, cancellationToken))
-                    {
-                        observer.OnNext(item);
-                    }
-                });
-
+            private IAsyncEnumerable<ResourceEvent<string, TResource>> Watch(CancellationToken cancellationToken)
+            {
+                // todo: figure out how to bridge cancellation token with observable (if possible)
+                return Watch().ToAsyncEnumerable();
+            }
             private IObservable<ResourceEvent<string, TResource>> Watch()
             {
+                
                 return Observable.Create<ResourceEvent<string, TResource>>(async (observer, cancellationToken) =>
                     {
                         var result = await _parent._kubernetes.ListWithHttpMessagesAsync<TResource>(

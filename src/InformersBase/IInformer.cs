@@ -10,7 +10,7 @@ namespace Steeltoe.Informers.InformersBase
     /// <typeparam name="TResource">The type of resource</typeparam>
     public interface IInformer<TKey, TResource>
     {
-        // IAsyncEnumerable<TResource> List(CancellationToken cancellationToken = default);
+        IAsyncEnumerable<TResource> List(CancellationToken cancellationToken = default);
         /// <summary>
         ///     Exposes an Observable stream over a resource of a particular type
         /// </summary>
@@ -37,7 +37,7 @@ namespace Steeltoe.Informers.InformersBase
     /// <typeparam name="TOptions">The type of options</typeparam>
     public interface IInformer<TKey, TResource, in TOptions>
     {
-        // IAsyncEnumerable<TResource> List(TOptions options, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<TResource> List(TOptions options, CancellationToken cancellationToken = default);
         /// <summary>
         ///     Exposes an Observable stream over a resource of a particular type
         /// </summary>

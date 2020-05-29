@@ -6,7 +6,7 @@ namespace Steeltoe.Informers.InformersBase
 {
     public static partial class Informable
     {
-        public static IInformable<TKey, TResource> ComputeMissedEventsBetweenResets<TKey, TResource>(this IInformable<TKey, TResource> source, IEqualityComparer<TResource> comparer)
+        public static IInformable<TKey, TResource> ComputeMissedEventsBetweenResets<TKey, TResource>(this IInformable<TKey, TResource> source, IEqualityComparer<TResource> comparer = null)
         {
             var cache = new SimpleCache<TKey, TResource>();
             var cacheSynchronized = false;

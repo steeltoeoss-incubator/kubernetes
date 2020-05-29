@@ -50,7 +50,7 @@ namespace Steeltoe.Informers.KubernetesCore
         public static IServiceCollection AddKubernetesInformers(this IServiceCollection services)
         {
             services.AddTransient(typeof(KubernetesInformer<>));
-            services.AddSingleton(typeof(IKubernetesInformer<>), typeof(SharedKubernetesInformer<>));
+            services.AddSingleton(typeof(IKubernetesInformer<>), typeof(KubernetesInformer<>));
             return services;
         }
     }

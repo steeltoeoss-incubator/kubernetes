@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reactive.Disposables;
+using System.Threading;
 
 namespace Steeltoe.Informers.InformersBase
 {
@@ -153,7 +154,12 @@ namespace Steeltoe.Informers.InformersBase
                 _informer = informer;
                 _options = options;
             }
-            
+
+            public IAsyncEnumerable<TResource> List(CancellationToken cancellationToken = default)
+            {
+                return _informer.List(_options, cancellationToken);
+            }
+
             public IInformable<TKey, TResource> ListWatch() => _informer.ListWatch(_options);
         }
     }

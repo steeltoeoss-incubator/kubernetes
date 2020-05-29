@@ -18,8 +18,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "informers", "samples\inform
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Steeltoe.Informers.KubernetesCore", "src\KubernetesCore\Steeltoe.Informers.KubernetesCore.csproj", "{BD87BE50-D72B-4060-81F4-8FC86F2F2AEB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Steeltoe.Discovery.KubernetesBase", "src\DiscoveryClient\Steeltoe.Discovery.KubernetesBase.csproj", "{B956A047-2568-4418-933D-E6015EE9AA8B}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,7 +30,6 @@ Global
 		{176769C6-E1EC-4E03-885F-6636ABB4012A} = {29FC92F5-20DE-4A9D-9EE5-A4118B144961}
 		{6E040EC4-E6A2-465B-BEEB-8B2D4009C677} = {AC2BF6A2-1230-4C57-BAEA-74B11A4968BD}
 		{BD87BE50-D72B-4060-81F4-8FC86F2F2AEB} = {E6DB9334-848E-44C2-B6A5-C02C2303F469}
-		{B956A047-2568-4418-933D-E6015EE9AA8B} = {E6DB9334-848E-44C2-B6A5-C02C2303F469}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{E3E68855-9BFD-4D84-B194-C84F84809CCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -59,9 +56,5 @@ Global
 		{BD87BE50-D72B-4060-81F4-8FC86F2F2AEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD87BE50-D72B-4060-81F4-8FC86F2F2AEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BD87BE50-D72B-4060-81F4-8FC86F2F2AEB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B956A047-2568-4418-933D-E6015EE9AA8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B956A047-2568-4418-933D-E6015EE9AA8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B956A047-2568-4418-933D-E6015EE9AA8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B956A047-2568-4418-933D-E6015EE9AA8B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
