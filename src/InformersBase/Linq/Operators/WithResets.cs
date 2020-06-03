@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -71,6 +72,44 @@ public static partial class Informable
                 }
             }
             return AsyncEnumerable.Create(x => SourceEnumerator(x));
+        }
+
+        internal class ResetExtractor<TKey, TResource>
+        {
+            List<ResourceEvent<TKey, TResource>> _resetBuffer = new List<ResourceEvent<TKey, TResource>>();
+            public bool ApplyEvent(ResourceEvent<TKey, TResource> notification, out List<ResourceEvent<TKey, TResource>> reset)
+            {
+                
+                reset = null;
+                var isReset = notification.EventFlags.HasFlag(EventTypeFlags.Reset);
+                var isExplicitResetEnd = notification.EventFlags.HasFlag(EventTypeFlags.ResetEnd);
+                if (isReset)
+                {
+                    if (!IsResetting) // start of new reset block
+                    {
+                        _resetBuffer.Clear();
+                    }
+
+                    IsResetting = true;
+                    _resetBuffer.Add(notification);
+                    if (!isExplicitResetEnd) // continue buffering till we reach the end of list window
+                    {
+                        return false;
+                    }
+                }
+
+                var isImplicitResetEnd = !notification.EventFlags.HasFlag(EventTypeFlags.Reset) && _resetBuffer.Count > 0;
+                if (isExplicitResetEnd || isImplicitResetEnd)
+                {
+                    reset =  _resetBuffer;
+                    IsResetting = false;
+                    return true;
+                }
+
+                return false;
+            }
+
+            public bool IsResetting { get; private set; }
         }
         
     }

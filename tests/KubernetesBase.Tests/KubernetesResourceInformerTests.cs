@@ -32,15 +32,14 @@ namespace Steeltoe.Informers.KubernetesBase.Tests
         private readonly ITestOutputHelper _testOutput;
         private WireMockServer _server;
         private KubernetesGenericClient _client;
-        private ILogger _log;
 
         public KubernetesResourceInformerTests(ITestOutputHelper testOutput)
         {
             _testOutput = testOutput;
-            _log = new XunitLogger<SharedInformerTests>(testOutput);
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings() { Converters = new[] { new StringEnumConverter() }, Formatting = Formatting.None };
             _server = WireMockServer.Start();
             var kubernetes = new k8s.Kubernetes(new KubernetesClientConfiguration {Host = _server.Urls.First()});
+            kubernetes.HttpClient.BaseAddress = new Uri(_server.Urls.First());
             _client = new KubernetesGenericClient(kubernetes.HttpClient, kubernetes.SerializationSettings, kubernetes.DeserializationSettings);
             
         }
@@ -70,7 +69,7 @@ namespace Steeltoe.Informers.KubernetesBase.Tests
 
             var sut = new KubernetesInformer<V1Pod>(_client, new RetryPolicy((e, i) => false, i => TimeSpan.Zero), () => false);
 
-            var result = await sut.ListWatch().ToList().TimeoutIfNotDebugging();
+            var result = await sut.ListWatch().ToListAsync().TimeoutIfNotDebugging();
             result.Should().HaveCount(3);
             result[0].EventFlags.Should().HaveFlag(EventTypeFlags.ResetStart);
             result[0].Value.Should().BeEquivalentTo(KubernetesTestData.TestPod1ResourceVersion1);

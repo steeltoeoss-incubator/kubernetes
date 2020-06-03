@@ -67,7 +67,7 @@ namespace Steeltoe.Informers.InformersBase
         
         public static IInformable<TKey, TResource> Take<TKey, TResource>(this IInformable<TKey, TResource> source, int count)
         {
-            throw new NotImplementedException();
+            return ((IAsyncEnumerable<ResourceEvent<TKey, TResource>>) source).Take(count).AsInformable();
         }
         public static IInformable<TKey, TResource> TakeWhile<TKey, TResource>(this IInformable<TKey, TResource> source, Func<TResource, bool> predicate)
         {

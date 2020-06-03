@@ -19,6 +19,7 @@
     <Compile Remove="Linq2\**" />
     <Compile Remove="Internal\**" />
     <Compile Remove="Operators\Join.cs" />
+    <Compile Remove="Linq\Operators\Join.cs" />
     <Compile Remove="DeltaQueue.cs" />
     <Compile Remove="DeltaQueue2.cs" />
   </ItemGroup>

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
@@ -9,12 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using k8s.Models;
 using KellermanSoftware.CompareNetObjects;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Steeltoe.Informers.InformersBase;
-using Steeltoe.Informers.InformersBase.Cache;
 using Steeltoe.Informers.KubernetesBase;
-using Steeltoe.Informers.KubernetesBase.Cache;
 
 namespace informers
 {
@@ -38,90 +34,32 @@ namespace informers
             _objectCompare.Config.MaxDifferences = 100;
         }
 
-        public class Person
-        {
-            public string Id { get; set; }
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
-            public Address Address { get; set; }
-        }
-        
-
-        public class Address
-        {
-            public string City { get; set; }
-        }
-
-public void PersonObserver(IInformer<string, Person> personInformer)
-{
-
-}
 
         public Task Initialize(CancellationToken cancellationToken)
         {
-            KubernetesInformerContext context = new KubernetesInformerContext(); // DI injected
-            IInformer<string, Person> person = InformerFactory(); // normally would be DI injected
-            
-            var subscription = new CompositeDisposable();
-            var pods = new KubernetesCache<V1Pod>();
-            
-            
-            var podsWithServices = new SimpleCache<Tuple<string,string>,Tuple<V1Pod,V1Service>>();
-            var namespaceQuery = KubernetesInformerOptions.Builder.NamespaceEquals("default").Build();
-            ILookup<string, V1Pod> podsByService =  context.Pods
-                .ListWatch(namespaceQuery)
-                .JoinOwner(context.Services.ListWatch(namespaceQuery), Tuple.Create)
-                .GroupBy(x => x.Item1.Metadata.Name)
-                .Do((serviceName, pod, changeType) => { /* Take some action when something changes */  } )
-                .ToLookup() // load results into lookup and keep em up to date;
-                .Subscribe()
-                .DisposeWith(subscription);
-                
             _podInformer
                 .ListWatch(KubernetesInformerOptions.Builder.NamespaceEquals("default").Build())
-                // .Resync(TimeSpan.FromSeconds(10))
-                .Catch<ResourceEvent<string, V1Pod>, Exception>(e =>
-                {
-                    _informerLogger.LogCritical(e, e.Message);
-                    return Observable.Throw<ResourceEvent<string, V1Pod>>(e);
-                })
-                .Buffer(TimeSpan.FromSeconds(5))
-                .Where(x => x.Any())
-                .Do(x =>
-                {
-                    var eventsPerResource = x.GroupBy(x => x.Value.Metadata.Name);
-                    foreach (var item in eventsPerResource)
-                    {
-                        PrintChanges(item.ToList());
-                    }
-                })
+                .Do(PrintChanges)
                 .Subscribe()
                 .DisposeWith(_subscription);
             return Task.CompletedTask;
         }
 
-        private void PrintChanges(IList<ResourceEvent<string, V1Pod>> changes)
+        private void PrintChanges(ResourceEvent<string, V1Pod> changes)
         {
-            // it's possible to do reconciliation here, but the current code is not production grade and lacks concurrency guards against modifying same resource
-            var obj = changes.First().Value;
             var sb = new StringBuilder();
-            sb.AppendLine($"Received changes for object with ID {obj.Metadata.Name} with {changes.Count} items");
-            sb.AppendLine($"Last known state was {changes.Last().EventFlags}");
-            foreach (var item in changes)
+            sb.AppendLine($"==={changes.EventFlags}===");
+            sb.AppendLine($"Name: {changes.Value.Metadata.Name}");
+            sb.AppendLine($"Version: {changes.Value.Metadata.ResourceVersion}");
+            if (changes.EventFlags.HasFlag(EventTypeFlags.Modify))
             {
-                sb.AppendLine($"==={item.EventFlags}===");
-                sb.AppendLine($"Name: {item.Value.Metadata.Name}");
-                sb.AppendLine($"Version: {item.Value.Metadata.ResourceVersion}");
-                if (item.EventFlags.HasFlag(EventTypeFlags.Modify))
+                var updateDelta = _objectCompare.Compare(changes.OldValue, changes.Value);
+                foreach (var difference in updateDelta.Differences)
                 {
-                    var updateDelta = _objectCompare.Compare(item.OldValue, item.Value);
-                    foreach (var difference in updateDelta.Differences)
-                    {
-                        sb.AppendLine($"{difference.PropertyName}: {difference.Object1} -> {difference.Object2}");
-                    }
+                    sb.AppendLine($"{difference.PropertyName}: {difference.Object1} -> {difference.Object2}");
                 }
             }
-
+            
             _informerLogger.LogInformation(sb.ToString());
 
         }

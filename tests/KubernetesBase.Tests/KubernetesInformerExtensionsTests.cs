@@ -174,19 +174,19 @@ namespace Steeltoe.Informers.KubernetesBase.Tests
             };
         }
         
-        [Theory]
-        [MemberData(nameof(GetTestScenarios))]
-        public async Task JoinOwner(string description, ScheduledEvent<V1Pod>[] podsScenario, ScheduledEvent<V1Service>[] servicesScenario, ResourceEvent<Tuple<string,string>, Tuple<V1Pod, V1Service>>[] expected)
-        {
-            var scheduler = new TestScheduler();
-            var pods = podsScenario.ToTestObservable(scheduler, false);
-            var services = servicesScenario.ToTestObservable(scheduler, false);
-            
-            var result = Task.Run(async () => await pods.JoinOwner(services, Tuple.Create).TimeoutIfNotDebugging().ToList());
-            await Task.Delay(100); // allow subscriptions to be established in statement above
-            scheduler.Start();
-            await result;
-            result.Result.Should().BeEquivalentTo(expected);
-        }
+        // [Theory]
+        // [MemberData(nameof(GetTestScenarios))]
+        // public async Task JoinOwner(string description, ScheduledEvent<V1Pod>[] podsScenario, ScheduledEvent<V1Service>[] servicesScenario, ResourceEvent<Tuple<string,string>, Tuple<V1Pod, V1Service>>[] expected)
+        // {
+        //     var scheduler = new TestScheduler();
+        //     var pods = podsScenario.ToTestObservable(scheduler, false);
+        //     var services = servicesScenario.ToTestObservable(scheduler, false);
+        //     
+        //     var result = Task.Run(async () => await pods.JoinOwner(services, Tuple.Create).TimeoutIfNotDebugging().ToList());
+        //     await Task.Delay(100); // allow subscriptions to be established in statement above
+        //     scheduler.Start();
+        //     await result;
+        //     result.Result.Should().BeEquivalentTo(expected);
+        // }
     }
 }

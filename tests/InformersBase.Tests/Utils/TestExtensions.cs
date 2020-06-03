@@ -24,6 +24,8 @@ namespace Steeltoe.Informers.InformersBase.Tests.Utils
             return new ScheduledEvent<T> { Event = obj, ScheduledAt = fireAt };
         }
 
+        public static List<ResourceEvent<string, T>> ToResourceEventList<T>(this ScheduledEvent<T>[] obj) 
+            => obj.OrderBy(x => x.ScheduledAt).Select(x => x.Event).ToList();
         public static IObservable<T> TimeoutIfNotDebugging<T>(this IObservable<T> source) =>
             source.TimeoutIfNotDebugging(DefaultTimeout);
 
@@ -40,6 +42,11 @@ namespace Steeltoe.Informers.InformersBase.Tests.Utils
             }
             await Wrapper().TimeoutIfNotDebugging(timeout);
         }
+        
+        public static async Task TimeoutIfNotDebugging(this ValueTask task) => await task.AsTask().TimeoutIfNotDebugging(DefaultTimeout);
+        public static async Task TimeoutIfNotDebugging(this ValueTask task, TimeSpan timeout) => await task.AsTask().TimeoutIfNotDebugging(timeout);
+        public static async Task<T> TimeoutIfNotDebugging<T>(this ValueTask<T> task) => await task.AsTask().TimeoutIfNotDebugging(DefaultTimeout);
+        public static async Task<T> TimeoutIfNotDebugging<T>(this ValueTask<T> task, TimeSpan timeout) => await task.AsTask().TimeoutIfNotDebugging(timeout);
 
         public static async Task<T> TimeoutIfNotDebugging<T>(this Task<T> task) => await task.TimeoutIfNotDebugging(DefaultTimeout);
 

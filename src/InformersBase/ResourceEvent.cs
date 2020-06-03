@@ -49,7 +49,6 @@ namespace Steeltoe.Informers.InformersBase
         public TKey Key { get; set; }
         public TResource Value { get; }
         public TResource OldValue { get; }
-        public static ResourceEvent<TKey, TResource> ResetEmpty { get; } = new ResourceEvent<TKey, TResource>(EventTypeFlags.ResetEmpty, default, default);
 
         public override string ToString()
         {
@@ -148,7 +147,7 @@ namespace Steeltoe.Informers.InformersBase
         }
         public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TKey, TResource>(this IDictionary<TKey, TResource> source,  bool emitEmpty = false)
         {
-            return ToReset(source, pair => pair.Key, x => x.Value, false);
+            return ToReset(source, pair => pair.Key, x => x.Value, emitEmpty);
         }
 
         public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TSource, TKey, TResource>(

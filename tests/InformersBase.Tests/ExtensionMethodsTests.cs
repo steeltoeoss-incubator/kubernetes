@@ -12,12 +12,6 @@ namespace Steeltoe.Informers.InformersBase.Tests
 {
     public class ExtensionMethodsTests
     {
-        private readonly ILogger _log;
-
-        public ExtensionMethodsTests(ITestOutputHelper output)
-        {
-            _log = new XunitLogger<SharedInformerTests>(output);
-        }
 
         [Fact]
         public void ToReset_WhenEmitEmpty_ProduceSingleItem()
