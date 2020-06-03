@@ -119,30 +119,6 @@ using Steeltoe.Informers.InformersBase;
                 return base.DisposeAsync();
             }
 
-            // private bool TryGetResetStartFromItem(StateTracker stateTracker, out ResourceEvent<TKey, TSource> value)
-            // {
-            //     if (stateTracker.LastReceived.EventFlags == EventTypeFlags.Delete)
-            //     {
-            //         value = default;
-            //         return false;
-            //     }
-            //
-            //     var flags = _isResetting && _reset.Count == 0 ? EventTypeFlags.ResetStart | EventTypeFlags.ResetEnd : EventTypeFlags.ResetStart; 
-            //     value = stateTracker.LastReceived.With(flags);
-            //     return true;
-            // }
-
-            // private bool ComputeNextEvent(StateTracker stateTracker, out ResourceEvent<TKey, TSource> value)
-            // {
-            //     if (stateTracker.LastReceived.EventFlags == EventTypeFlags.Delete)
-            //     {
-            //         value = default;
-            //         return false;
-            //     }
-            //     var flags = _isResetting && _resetQueue.Count == 0 ? EventTypeFlags.ResetEnd : EventTypeFlags.Reset;
-            //     value = stateTracker.LastReceived.With(flags);
-            //     return true;
-            // }
             private bool CheckIsCompleted()
             {
                 if (!_completed) return false;

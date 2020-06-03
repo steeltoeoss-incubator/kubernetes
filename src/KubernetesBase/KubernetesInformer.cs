@@ -105,14 +105,18 @@ namespace Steeltoe.Informers.KubernetesBase
                 }
                
             }
+            private IObservable<ResourceEvent<string, TResource>> List() =>
+                Observable.Create<ResourceEvent<string, TResource>>(async (observer, cancellationToken) =>
+                {
+                    await foreach (var item in List(cancellationToken).ToReset(x => x.Metadata.Name, x => x, true, cancellationToken))
+                    {
+                        observer.OnNext(item);
+                    }
+                });
 
             public IInformable<string, TResource> ListWatch([EnumeratorCancellation] CancellationToken cancellationToken)
             {
-                return List(cancellationToken)
-                    .ToReset(x => x.Metadata.Name, x => x, true, cancellationToken)
-                    .Concat(Watch(cancellationToken))
-                    .AsInformable();
-               
+                return ListWatch().ToInformable();
             }
             private IObservable<ResourceEvent<string, TResource>> ListWatch()
             {
@@ -122,12 +126,7 @@ namespace Steeltoe.Informers.KubernetesBase
                     .Concat(Watch());
                
             }
-
-            private IAsyncEnumerable<ResourceEvent<string, TResource>> Watch(CancellationToken cancellationToken)
-            {
-                // todo: figure out how to bridge cancellation token with observable (if possible)
-                return Watch().ToAsyncEnumerable();
-            }
+            
             private IObservable<ResourceEvent<string, TResource>> Watch()
             {
                 
