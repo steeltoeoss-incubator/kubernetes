@@ -228,7 +228,4 @@ project.lock.json
 .DS_Store
 .sonarqube/
 
-Pivotal.GemFire.dll
-pivnet*
-pivotal*.zip
-GeneratedCertificates/
+*.opencover.xml
