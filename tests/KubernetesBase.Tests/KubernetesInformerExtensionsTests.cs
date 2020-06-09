@@ -83,7 +83,7 @@ namespace Steeltoe.Informers.KubernetesBase.Tests
                 new [] // expected
                 {
                     Tuple.Create(pod1, svc1).ToResourceEvent(EventTypeFlags.ResetStart | EventTypeFlags.ResetEnd, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name)),
-                    Tuple.Create(pod1, svc1).ToResourceEvent(EventTypeFlags.Modify, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name), Tuple.Create(pod1, svc1)),
+                    Tuple.Create(pod1, svc1).ToResourceEvent(EventTypeFlags.Modify, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name)),
                 }
             };
             yield return new object[]{
@@ -100,7 +100,7 @@ namespace Steeltoe.Informers.KubernetesBase.Tests
                 new [] // expected
                 {
                     Tuple.Create(pod1, svc1).ToResourceEvent(EventTypeFlags.ResetStart | EventTypeFlags.ResetEnd, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name)),
-                    Tuple.Create(pod1, svc1).ToResourceEvent(EventTypeFlags.Modify, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name), Tuple.Create(pod1, svc1)),
+                    Tuple.Create(pod1, svc1).ToResourceEvent(EventTypeFlags.Modify, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name)),
                 }
             };
             yield return new object[]{
@@ -151,7 +151,7 @@ namespace Steeltoe.Informers.KubernetesBase.Tests
                 new [] // expected
                 {
                     Tuple.Create(pod1, svc1).ToResourceEvent(EventTypeFlags.ResetStart | EventTypeFlags.ResetEnd, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name)),
-                    Tuple.Create(pod1NoOwner, svc1).ToResourceEvent(EventTypeFlags.Delete, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name), Tuple.Create(pod1, svc1)),
+                    Tuple.Create(pod1NoOwner, svc1).ToResourceEvent(EventTypeFlags.Delete, Tuple.Create(pod1.Metadata.Name, svc1.Metadata.Name)),
                 }
             };
             yield return new object[]{

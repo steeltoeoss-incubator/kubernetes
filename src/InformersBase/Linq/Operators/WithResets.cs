@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Steeltoe.Informers.InformersBase;
 
-namespace Steeltoe.Informers.InformersBase
+namespace System.Linq
 {
 public static partial class Informable
     {
@@ -85,7 +86,7 @@ public static partial class Informable
                 var isExplicitResetEnd = notification.EventFlags.HasFlag(EventTypeFlags.ResetEnd);
                 if (isReset)
                 {
-                    if (!IsResetting) // start of new reset block
+                    if (!IsResetting || notification.EventFlags.HasFlag(EventTypeFlags.ResetStart)) // start of new reset block
                     {
                         _resetBuffer.Clear();
                     }
@@ -110,6 +111,16 @@ public static partial class Informable
             }
 
             public bool IsResetting { get; private set; }
+
+            public async Task<List<ResourceEvent<TKey, TResource>>> Extract(IAsyncEnumerator<ResourceEvent<TKey, TResource>> source, CancellationToken cancellationToken = default)
+            {
+                while (await source.MoveNextAsync(cancellationToken))
+                {
+                    if (ApplyEvent(source.Current, out var resetBuffer))
+                        return resetBuffer;
+                }
+                return new List<ResourceEvent<TKey, TResource>>();
+            }
         }
         
     }

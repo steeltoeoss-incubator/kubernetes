@@ -81,7 +81,10 @@ namespace Steeltoe.Informers.InformersBase.Tests.Utils
 
         public static IEqualityComparer<TestResource> KeyVersionComparer { get; } = new KeyVersionEqualityComparer();
 
-
+        public ResourceEvent<string, TestResource> ToResourceEvent(EventTypeFlags typeFlags)
+        {
+            return new ResourceEvent<string, TestResource>(typeFlags, Key, this);
+        }
         public TestResource(string key, int version = 1, string value = "test")
         {
             Value = value;

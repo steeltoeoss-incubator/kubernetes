@@ -45,7 +45,7 @@ namespace informers
             return Task.CompletedTask;
         }
 
-        private void PrintChanges(ResourceEvent<string, V1Pod> changes)
+        private void PrintChanges(ResourceEvent<string, V1Pod> changes, V1Pod previousValue)
         {
             var sb = new StringBuilder();
             sb.AppendLine($"==={changes.EventFlags}===");
@@ -53,7 +53,7 @@ namespace informers
             sb.AppendLine($"Version: {changes.Value.Metadata.ResourceVersion}");
             if (changes.EventFlags.HasFlag(EventTypeFlags.Modify))
             {
-                var updateDelta = _objectCompare.Compare(changes.OldValue, changes.Value);
+                var updateDelta = _objectCompare.Compare(previousValue, changes.Value);
                 foreach (var difference in updateDelta.Differences)
                 {
                     sb.AppendLine($"{difference.PropertyName}: {difference.Object1} -> {difference.Object2}");

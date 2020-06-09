@@ -9,8 +9,8 @@ namespace Steeltoe.Informers.InformersBase
 {
     public struct ResourceEvent
     {
-        public static ResourceEvent<TKey, TResource> Create<TKey, TResource>(EventTypeFlags eventFlags, TKey key, TResource value = default, TResource oldValue = default) =>
-            new ResourceEvent<TKey, TResource>(eventFlags, key, value, oldValue);
+        public static ResourceEvent<TKey, TResource> Create<TKey, TResource>(EventTypeFlags eventFlags, TKey key, TResource value = default) =>
+            new ResourceEvent<TKey, TResource>(eventFlags, key, value);
     }
     /// <summary>
     /// </summary>
@@ -21,8 +21,9 @@ namespace Steeltoe.Informers.InformersBase
         
 
         public static ResourceEvent<TKey, TResource> EmptyReset { get; } = new ResourceEvent<TKey, TResource>(EventTypeFlags.ResetEmpty);
+        public static ResourceEvent<TKey, TResource> ResetEnd { get; } = new ResourceEvent<TKey, TResource>(EventTypeFlags.ResetEnd);
 
-        public ResourceEvent(EventTypeFlags eventFlags, TKey key = default, TResource value = default, TResource oldValue = default)
+        public ResourceEvent(EventTypeFlags eventFlags, TKey key = default, TResource value = default)
         {
             if (eventFlags.HasFlag(EventTypeFlags.ResetEmpty) || eventFlags.HasFlag(EventTypeFlags.ResetEmpty))
             {
@@ -41,18 +42,16 @@ namespace Steeltoe.Informers.InformersBase
 
             Key = key;
             Value = value;
-            OldValue = oldValue;
             EventFlags = eventFlags;
         }
 
         public EventTypeFlags EventFlags { get; }
         public TKey Key { get; set; }
         public TResource Value { get; }
-        public TResource OldValue { get; }
 
         public override string ToString()
         {
-            var includePrefix = Value != null && OldValue != null;
+            var includePrefix = Value != null;
 
             var sb = new StringBuilder();
             sb.AppendLine();
@@ -75,21 +74,6 @@ namespace Steeltoe.Informers.InformersBase
                 }
             }
 
-            if (OldValue != null)
-            {
-                if (includePrefix)
-                {
-                    sb.Append(nameof(OldValue));
-                    sb.Append("{ ");
-                }
-
-                sb.Append(OldValue);
-                if (includePrefix)
-                {
-                    sb.Append("} ");
-                }
-            }
-
             sb.Append("]");
             return sb.ToString();
         }
@@ -98,7 +82,7 @@ namespace Steeltoe.Informers.InformersBase
     public static class ResourceEventExtensions
     {
         
-        public static ResourceEvent<TKey, TResource> With<TKey, TResource>(this ResourceEvent<TKey, TResource> obj, EventTypeFlags typeFlags = default, TKey key = default, TResource value = default, TResource oldValue = default)
+        public static ResourceEvent<TKey, TResource> With<TKey, TResource>(this ResourceEvent<TKey, TResource> obj, EventTypeFlags typeFlags = default, TKey key = default, TResource value = default)
         {
             if (EqualityComparer<EventTypeFlags>.Default.Equals(typeFlags, default))
                 typeFlags = obj.EventFlags;
@@ -106,21 +90,21 @@ namespace Steeltoe.Informers.InformersBase
                 key = obj.Key;
             if (EqualityComparer<TResource>.Default.Equals(value, default))
                 value = obj.Value;
-            if (EqualityComparer<TResource>.Default.Equals(oldValue, default))
-                oldValue = obj.OldValue;
+
             
-            return new ResourceEvent<TKey, TResource>(typeFlags, key, value, oldValue);
+            return new ResourceEvent<TKey, TResource>(typeFlags, key, value);
         }
 
-        
 
-        public static ResourceEvent<TKey, TResource> ToResourceEvent<TKey, TResource>(this TResource obj, EventTypeFlags typeFlags = default, TKey key = default, TResource oldValue = default)
+
+        public static ResourceEvent<TResource, TResource> ToResourceEvent<TResource>(this TResource obj, EventTypeFlags typeFlags)
         {
-            if (typeFlags.HasFlag(EventTypeFlags.Delete) && EqualityComparer<TResource>.Default.Equals(oldValue, default))
-            {
-                oldValue = obj;
-            }
-            return new ResourceEvent<TKey, TResource>(typeFlags, key, obj, oldValue);
+            return new ResourceEvent<TResource, TResource>(typeFlags, obj, obj);
+
+        }
+        public static ResourceEvent<TKey, TResource> ToResourceEvent<TKey, TResource>(this TResource obj, EventTypeFlags typeFlags, TKey key)
+        {
+            return new ResourceEvent<TKey, TResource>(typeFlags, key, obj);
         }
 
         public static IEnumerable<ResourceEvent<TKey, TResource>> ToReset<TKey, TResource>(this IEnumerable<ResourceEvent<TKey, TResource>> source, bool emitEmpty = false)

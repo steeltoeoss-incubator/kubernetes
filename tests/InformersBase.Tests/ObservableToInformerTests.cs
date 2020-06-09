@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
@@ -298,6 +299,7 @@ namespace Steeltoe.Informers.InformersBase.Tests
             
             var enumerator = sut.GetAsyncEnumerator();
             subject.OnCompleted();
+            
             sut.Take(2).ToEventList().Result.Should().BeEquivalentTo(events[1],events[2]);
         }
     }

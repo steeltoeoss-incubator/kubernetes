@@ -100,8 +100,9 @@ namespace System.Linq
         New,
         Allocated,
         ResetStart,
-        Reset,
+        Reseting,
         Watching,
+        Iterating,
         Disposed,
     }
 }

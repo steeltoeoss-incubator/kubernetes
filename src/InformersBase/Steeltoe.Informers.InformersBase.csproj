@@ -19,20 +19,10 @@
     <Compile Remove="Linq2\**" />
     <Compile Remove="Internal\**" />
     <Compile Remove="Operators\Join.cs" />
-    <Compile Remove="Linq\Operators\Join.cs" />
     <Compile Remove="DeltaQueue.cs" />
     <Compile Remove="DeltaQueue2.cs" />
+    <Compile Remove="Linq\Operators\GroupBy.cs" />
+    <Compile Remove="Linq\Operators\Join.cs" />
   </ItemGroup>
 
-
-  <ItemGroup>
-    <EmbeddedResource Remove="Linq2\**" />
-    <EmbeddedResource Remove="Internal\**" />
-  </ItemGroup>
-
-
-  <ItemGroup>
-    <None Remove="Linq2\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
 </Project>

@@ -64,15 +64,10 @@ namespace Steeltoe.Informers.KubernetesBase
             });
         }
 
-        public static ResourceEvent<string, TResource> ToResourceEvent<TResource>(this TResource obj, EventTypeFlags typeFlags, TResource oldValue = default)
+        public static ResourceEvent<string, TResource> ToResourceEvent<TResource>(this TResource obj, EventTypeFlags typeFlags)
             where TResource : IKubernetesObject<V1ObjectMeta>
         {
-            if (typeFlags.HasFlag(EventTypeFlags.Delete) && oldValue == null)
-            {
-                oldValue = obj;
-            }
-
-            return new ResourceEvent<string, TResource>(typeFlags, obj.Metadata.Name, obj, oldValue);
+            return new ResourceEvent<string, TResource>(typeFlags, obj.Metadata.Name, obj);
         }
 
         internal static bool IsValidKubernetesName(this string value)

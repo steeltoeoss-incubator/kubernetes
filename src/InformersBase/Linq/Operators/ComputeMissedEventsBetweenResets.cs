@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using Steeltoe.Informers.InformersBase;
 using Steeltoe.Informers.InformersBase.Cache;
 
-namespace Steeltoe.Informers.InformersBase
+namespace System.Linq
 {
     public static partial class Informable
     {

@@ -7,8 +7,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+ using Steeltoe.Informers.InformersBase.Cache;
 
-// Note: The type here has to be internal as System.Linq has its own public copy we're not using.
+ // Note: The type here has to be internal as System.Linq has its own public copy we're not using.
 
 namespace Steeltoe.Informers.InformersBase.Internal
 {
@@ -17,7 +18,7 @@ namespace Steeltoe.Informers.InformersBase.Internal
     internal class Grouping<TKey, TElementKey, TElement> : IInformGrouping<TKey, TElementKey,TElement> //, IDictionary<TElementKey,TElement>, IAsyncGrouping<TKey, KeyValuePair<TElementKey,TElement>>
     {
         internal int _count;
-        internal KeyValuePair<TElementKey,TElement>[] _elements;
+        internal SimpleCache<TElementKey,TElement> _elements;
         internal int _hashCode;
         internal Grouping<TKey, TElementKey, TElement> _hashNext;
         internal TKey _key;

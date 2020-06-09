@@ -123,14 +123,10 @@ namespace Steeltoe.Informers.InformersBase.Tests.Utils
                 return subscription;
             });
         }
-        public static ResourceEvent<string, TResource> ToResourceEvent<TResource>(this TResource obj, EventTypeFlags typeFlags, TResource oldValue = default)
+        public static ResourceEvent<string, TResource> ToResourceEvent<TResource>(this TResource obj, EventTypeFlags typeFlags)
         where TResource : TestResource
         {
-            if (typeFlags.HasFlag(EventTypeFlags.Delete) && oldValue == null)
-            {
-                oldValue = obj;
-            }
-            return new ResourceEvent<string, TResource>(typeFlags, obj.Key, obj, oldValue);
+            return new ResourceEvent<string, TResource>(typeFlags, obj.Key, obj);
         }
         public static ResourceEvent<string, TestResource>[] ToBasicExpected(this IEnumerable<ScheduledEvent<TestResource>> events)
         {
@@ -139,11 +135,10 @@ namespace Steeltoe.Informers.InformersBase.Tests.Utils
             foreach (var e in events.Select(x => x.Event))
             {
                 var item = e;
-                if (e.EventFlags.HasFlag(EventTypeFlags.Modify) && lastKnown.TryGetValue(e.Value.Key, out var oldValue))
+                if (e.EventFlags.HasFlag(EventTypeFlags.Modify))
                 {
-                    item = new ResourceEvent<string, TestResource>(e.EventFlags, e.Key, e.Value, oldValue);
+                    item = new ResourceEvent<string, TestResource>(e.EventFlags, e.Key, e.Value);
                 }
-
                 if (e.EventFlags.HasFlag(EventTypeFlags.Delete))
                 {
                     lastKnown.Remove(e.Value.Key);

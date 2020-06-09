@@ -2,36 +2,27 @@
 // The .NET Foundation licenses this file to you under the MIT License.
 // See the LICENSE file in the project root for more information. 
 
- using System;
- using System.Collections.Concurrent;
+using System;
 using System.Collections.Generic;
- using System.Diagnostics;
- using System.Linq;
- using System.Threading;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Steeltoe.Informers.InformersBase;
 
- namespace Steeltoe.Informers.InformersBase
+ namespace System.Linq
 {
     public static partial class Informable
     {
         
-        /// <summary>
-        /// Converts an observable sequence to an async-enumerable sequence.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">Observable sequence to convert to an async-enumerable sequence.</param>
-        /// <returns>The async-enumerable sequence whose elements are pulled from the given observable sequence.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         public static IInformable<TKey, TSource> ToInformable<TKey, TSource>(this IObservable<ResourceEvent<TKey, TSource>> source)
         {
             if (source == null)
                 throw Error.ArgumentNull(nameof(source));
 
-            return new InformableEnumerable<TKey, TSource>(source);
+            return new ObserverInformableV2<TKey, TSource>(source);
         }
 
-        private class HashQueue<T>
+        internal class HashQueue<T>
         {
             private readonly Queue<T> _queue = new Queue<T>();
             private readonly HashSet<T> _set = new HashSet<T>();
@@ -60,41 +51,224 @@ using Steeltoe.Informers.InformersBase;
                 _queue.Clear();
             }
         }
-        private sealed class InformableEnumerable<TKey, TSource> : AsyncIterator<ResourceEvent<TKey, TSource>>, IObserver<ResourceEvent<TKey, TSource>>, IInformable<TKey, TSource>
-        {
-            private class StateTracker
-            {
-                public bool HasSent { get; set; }
-                private ResourceEvent<TKey, TSource> _lastSent;
 
-                public ResourceEvent<TKey, TSource> LastSent
+        internal sealed class ObserverInformableV2<TKey, TSource> : TransformingInformableIterator<TKey, TSource>, IObserver<ResourceEvent<TKey, TSource>>
+        {
+            private IDisposable _subscription;
+            private Informable.HashQueue<TKey> _changedItems = new Informable.HashQueue<TKey>();
+
+            /// <summary>
+            /// number of items needed to be taken off the queue before we reach end of reset window
+            /// </summary>
+            private int _pendingResetItems = 0;
+
+
+            private readonly IObservable<ResourceEvent<TKey, TSource>> _source;
+            public ObserverInformableV2(IObservable<ResourceEvent<TKey, TSource>> source) => _source = source;
+            public override AsyncIteratorBase<ResourceEvent<TKey, TSource>> Clone() => new Informable.ObserverInformableV2<TKey, TSource>(_source);
+
+            private void OnCanceled(object? state)
+            {
+                Dispose();
+                if (_signal?.TrySetCanceled(_cancellationToken) ?? false)
+                    return;
+                _signal = new TaskCompletionSource<bool>();
+                _signal.TrySetCanceled(_cancellationToken);
+            }
+
+            private void Dispose()
+            {
+                lock (_lock)
                 {
-                    get => _lastSent;
-                    set
+                    _ctr.Dispose();
+                    DisposeSubscriptionLocked();
+                    _changedItems = null;
+                    _error = null;
+                    _knownItems = null;
+                }
+            }
+
+            protected override async ValueTask<bool> MoveNextCore()
+            {
+
+                _cancellationToken.ThrowIfCancellationRequested();
+
+                bool TryGetNextQeueuedResourceEvent(out StateTracker<TKey, TSource> stateTracker)
+                {
+                    if (_changedItems.Count > 0)
                     {
-                        _lastSent = value;
-                        HasSent = true;
+                        var key = _changedItems.Dequeue();
+                        if (_knownItems.TryGetValue(key, out stateTracker))
+                        {
+                            return true;
+                        }
                     }
+
+                    stateTracker = default;
+                    return false;
                 }
 
-                public ResourceEvent<TKey, TSource> LastReceived { get; set; }
 
-                
+                EventTypeFlags flags = 0;
+                switch (_state)
+                {
+                    case InformableIteratorState.Allocated:
+                        lock (_lock)
+                        {
+                            _subscription = _source.Subscribe(this);
+                            foreach (var key in _knownItems.Keys.ToList())
+                            {
+                                _changedItems.Enqueue(key);
+                                _pendingResetItems++;
+                            }
+
+                            _ctr = _cancellationToken.Register(OnCanceled, state: null);
+                            _state = InformableIteratorState.ResetStart;
+                        }
+
+                        goto case InformableIteratorState.ResetStart;
+                    case InformableIteratorState.ResetStart:
+                        if (_isSynchronized && _knownItems.Count == 0)
+                        {
+                            _current = ResourceEvent<TKey, TSource>.EmptyReset;
+                            _state = InformableIteratorState.Watching;
+                            return true;
+                        }
+
+                        flags = EventTypeFlags.ResetStart;
+                        // _state = InformableIteratorState.Reseting;
+                        goto case InformableIteratorState.Reseting;
+                    case InformableIteratorState.Reseting:
+                        flags |= EventTypeFlags.Reset;
+                        goto case InformableIteratorState.Iterating;
+                    case InformableIteratorState.Watching:
+                    case InformableIteratorState.Iterating:
+                        while (true)
+                        {
+                            lock (_lock)
+                            {
+                                if (TryGetNextQeueuedResourceEvent(out var state))
+                                {
+                                    if (_state == InformableIteratorState.ResetStart || _state == InformableIteratorState.Reseting)
+                                    {
+                                        _pendingResetItems--;
+                                        var isResetEnd = !_resetExtractor.IsResetting && _pendingResetItems == 0;
+                                        if (isResetEnd)
+                                        {
+                                            flags |= EventTypeFlags.ResetEnd;
+                                        }
+                                    }
+
+                                    if (!TrySetCurrent(state, flags))
+                                        continue;
+                                    return true;
+                                }
+
+                                if (CheckIsCompleted())
+                                    return false;
+                                _signal ??= new TaskCompletionSource<bool>();
+                            }
+
+                            await _signal.Task.ConfigureAwait(false);
+                            ;
+                            lock (_lock)
+                            {
+                                _signal = null;
+                            }
+                        }
+
+                }
+
+                await DisposeAsync().ConfigureAwait(false);
+                return false;
             }
-            
+
+            private bool CheckIsCompleted()
+            {
+                if (!_completed) return false;
+                var error = _error;
+
+                if (error != null)
+                {
+                    throw error;
+                }
+
+                return true;
+
+            }
+
+            public void OnCompleted()
+            {
+                lock (_lock)
+                {
+                    _completed = true;
+                    DisposeSubscriptionLocked();
+                    OnNotificationLocked();
+                }
+            }
+
+            public void OnError(Exception error)
+            {
+                lock (_lock)
+                {
+                    _error = error;
+                    _completed = true;
+                    DisposeSubscriptionLocked();
+                    OnNotificationLocked();
+                }
+            }
+
+
+            public void OnNext(ResourceEvent<TKey, TSource> value)
+            {
+                lock (_lock)
+                {
+                    if (value.EventFlags.HasFlag(EventTypeFlags.ResetStart))
+                    {
+                        _changedItems.Clear();
+                    }
+
+                    if (AcceptNext(value, out var stateTracker))
+                    {
+                        var isScheduled = _changedItems.Enqueue(value.Key);
+                        if (isScheduled && _state > InformableIteratorState.Allocated && value.EventFlags.HasFlag(EventTypeFlags.Reset))
+                            _pendingResetItems++;
+                        OnNotificationLocked();
+                    }
+
+                }
+            }
+
+            private void OnNotificationLocked()
+            {
+                if (_signal != null)
+                    _signal.TrySetResult(true);
+                else
+                    _signal = TaskExt.True;
+            }
+
+            private void DisposeSubscriptionLocked()
+            {
+                _subscription?.Dispose();
+                _subscription = null;
+            }
+        }
+
+        /// <summary>
+        /// This class is deprecated in favor of V2 as long as no gremlins in state machine are uncovered
+        /// </summary>
+        internal sealed class ObserverInformableV1<TKey, TSource> : AsyncIterator<ResourceEvent<TKey, TSource>>, IObserver<ResourceEvent<TKey, TSource>>, IInformable<TKey, TSource>
+        {
             private readonly IObservable<ResourceEvent<TKey, TSource>> _source;
 
             private HashQueue<TKey> _changedItems = new HashQueue<TKey>();
-            
-            // private Queue<TKey> _resetQueue = new Queue<TKey>();
-            // private HashSet<TKey> _sentResetKeys = new HashSet<TKey>();
-            private Dictionary<TKey, StateTracker> _knownItems = new Dictionary<TKey, StateTracker>();
+            private Dictionary<TKey, StateTracker<TKey, TSource>> _knownItems = new Dictionary<TKey, StateTracker<TKey, TSource>>();
             private readonly object _lock = new object();
 
-            private Exception? _error;
+            private Exception _error;
             private bool _completed;
             private TaskCompletionSource<bool>? _signal;
-            private IDisposable? _subscription;
+            private IDisposable _subscription;
             private CancellationTokenRegistration _ctr;
             private ResetExtractor<TKey, TSource> _resetExtractor = new ResetExtractor<TKey, TSource>();
             /// <summary>
@@ -106,11 +280,9 @@ using Steeltoe.Informers.InformersBase;
             /// </summary>
             private int _pendingResetItems = 0;
             
-            // private bool _isResetting;
+            public ObserverInformableV1(IObservable<ResourceEvent<TKey, TSource>> source) => _source = source;
 
-            public InformableEnumerable(IObservable<ResourceEvent<TKey, TSource>> source) => _source = source;
-
-            public override AsyncIteratorBase<ResourceEvent<TKey, TSource>> Clone() => new InformableEnumerable<TKey, TSource>(_source);
+            public override AsyncIteratorBase<ResourceEvent<TKey, TSource>> Clone() => new ObserverInformableV1<TKey, TSource>(_source);
 
             public override ValueTask DisposeAsync()
             {
@@ -138,7 +310,7 @@ using Steeltoe.Informers.InformersBase;
                
                 _cancellationToken.ThrowIfCancellationRequested();
 
-                bool TryGetNextQeueuedResourceEvent(out StateTracker stateTracker)
+                bool TryGetNextQeueuedResourceEvent(out StateTracker<TKey, TSource> stateTracker)
                 {
                     if (_changedItems.Count > 0)
                     {
@@ -174,14 +346,15 @@ using Steeltoe.Informers.InformersBase;
                         goto case InformableIteratorState.ResetStart;
                     case InformableIteratorState.ResetStart:
                         flags = EventTypeFlags.ResetStart;
-                        _state = InformableIteratorState.Reset;
-                        goto case InformableIteratorState.Reset;
-                    case InformableIteratorState.Reset:
+                        _state = InformableIteratorState.Reseting;
+                        goto case InformableIteratorState.Reseting;
+                    case InformableIteratorState.Reseting:
                         flags |= EventTypeFlags.Reset;
                         while (true)
                         {
                             lock (_lock)
                             {
+                                
                                 if (_isSynchronized && _knownItems.Count == 0)
                                 {
                                     _current = ResourceEvent<TKey, TSource>.EmptyReset;
@@ -321,7 +494,7 @@ using Steeltoe.Informers.InformersBase;
 
                     if (!_knownItems.TryGetValue(value.Key, out var state))
                     {
-                        state = new StateTracker();
+                        state = new StateTracker<TKey, TSource>();
                         _knownItems.Add(value.Key, state);
                     }
                     state.LastReceived = value;

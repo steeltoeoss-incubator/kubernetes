@@ -11,10 +11,11 @@ namespace System.Linq
 {
     public partial class Informable
     {
-        public static async Task<IList<TSource>> ToList<TKey, TSource>(this IInformable<TKey, TSource> source, CancellationToken cancellationToken = default)
+        public static async Task<IDictionary<TKey, TSource>> ToDictionary<TKey, TSource>(this IInformable<TKey, TSource> source, CancellationToken cancellationToken = default)
         {
             var result = await source.ToEventList(cancellationToken);
-            return result.Select(x => x.Value).ToList();
+            return result.ToDictionary(x => x.Key, x => x.Value);
         }
+        
     }
 }

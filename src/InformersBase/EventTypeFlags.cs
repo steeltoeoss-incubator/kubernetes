@@ -65,6 +65,6 @@ namespace Steeltoe.Informers.InformersBase
 
     public static class EventTypeFlagsExtensions
     {
-        public static bool IsMetaEvent(this EventTypeFlags flags) => flags.HasFlag(EventTypeFlags.ResetEmpty) || flags.HasFlag(EventTypeFlags.Delete);
+        public static bool IsMeta(this EventTypeFlags flags) => flags.HasFlag(EventTypeFlags.ResetEmpty) || flags.HasFlag(EventTypeFlags.Delete);
     }
 }

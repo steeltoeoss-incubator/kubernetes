@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Steeltoe.Informers.InformersBase;
 using Steeltoe.Informers.InformersBase.Cache;
 
-namespace Steeltoe.Informers.InformersBase
+namespace System.Linq
 {
     public static partial class Informable
     {
@@ -45,7 +46,7 @@ namespace Steeltoe.Informers.InformersBase
                             var key = notification.Key;
                             if (cache.TryGetValue(key, out var existing))
                             {
-                                notification = new ResourceEvent<TKey, TResource>(notification.EventFlags, notification.Key, mapper(existing, notification.Value), existing);
+                                notification = new ResourceEvent<TKey, TResource>(notification.EventFlags, notification.Key, mapper(existing, notification.Value));
                             }
                             cache[notification.Key] = notification.Value;
                         }

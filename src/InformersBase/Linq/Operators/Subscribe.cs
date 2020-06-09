@@ -2,8 +2,9 @@ using System;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Threading;
+using Steeltoe.Informers.InformersBase;
 
-namespace Steeltoe.Informers.InformersBase
+namespace System.Linq
 {
     public partial class Informable
     {

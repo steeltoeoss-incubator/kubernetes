@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Steeltoe.Informers.InformersBase.Cache
 {
@@ -12,6 +14,18 @@ namespace Steeltoe.Informers.InformersBase.Cache
 
         private readonly IDictionary<TKey, TResource> _items;
         protected readonly object _syncRoot = new object();
+        private readonly TaskCompletionSource<bool> _synchronized = new TaskCompletionSource<bool>();
+        private IDisposable _disposable;
+        private CancellationTokenRegistration _cancellationTokenRegistration;
+        public Task Synchronized => _synchronized.Task; 
+        
+        public SimpleCache(IInformable<TKey, TResource> source, CancellationToken cancellationToken)
+        {
+            _cancellationTokenRegistration = cancellationToken.Register(() => _disposable?.Dispose());
+            _disposable = source
+                .Into(this)
+                .Subscribe();
+        }
 
         public SimpleCache()
         {
@@ -106,6 +120,8 @@ namespace Steeltoe.Informers.InformersBase.Cache
                     _items.Add(item.Key, item.Value);
                     UpdateIndices(default, item.Value, item.Key);
                 }
+
+                _synchronized.TrySetResult(true);
             }
         }
 
@@ -272,8 +288,9 @@ namespace Steeltoe.Informers.InformersBase.Cache
             }
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
+            _disposable.Dispose();
         }
 
         public long Version { get; set; }

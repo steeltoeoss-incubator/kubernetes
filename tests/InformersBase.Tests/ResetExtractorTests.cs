@@ -30,11 +30,21 @@ namespace Steeltoe.Informers.InformersBase.Tests
         public async Task ResetSingleItem()
         {
             var sut = new Informable.ResetExtractor<int,int>();
-            var item = ResourceEvent.Create(EventTypeFlags.ResetStart | EventTypeFlags.ResetEnd, 1, 1, 1);
+            var item = ResourceEvent.Create(EventTypeFlags.ResetStart | EventTypeFlags.ResetEnd, 1, 1);
             var result = sut.ApplyEvent(item, out var reset);
             result.Should().BeTrue();
             reset.Should().BeEquivalentTo(item);
             sut.IsResetting.Should().BeFalse();
+        }
+        [Fact]
+        public async Task Extract()
+        {
+            var sut = new Informable.ResetExtractor<int,int>();
+            var enumerator = Informable.Create(new[]{1,2}, x => x, new[]{3.ToResourceEvent(EventTypeFlags.Add)}).GetAsyncEnumerator();
+            var reset = await sut.Extract(enumerator);
+            reset.Should().BeEquivalentTo(1.ToResourceEvent(EventTypeFlags.ResetStart), 2.ToResourceEvent(EventTypeFlags.ResetEnd));
+            await enumerator.MoveNextAsync().TimeoutIfNotDebugging();
+            enumerator.Current.Should().Be(3.ToResourceEvent(EventTypeFlags.Add));
         }
         [Fact]
         public async Task ResetMultiple()
@@ -42,8 +52,8 @@ namespace Steeltoe.Informers.InformersBase.Tests
             var sut = new Informable.ResetExtractor<int,int>();
             var items = new[]
             {
-                ResourceEvent.Create(EventTypeFlags.ResetStart, 1, 1, 1),
-                ResourceEvent.Create(EventTypeFlags.ResetEnd, 2, 2, 1)
+                ResourceEvent.Create(EventTypeFlags.ResetStart, 1, 1),
+                ResourceEvent.Create(EventTypeFlags.ResetEnd, 2, 2)
             };
             var result = sut.ApplyEvent(items[0], out var reset);
             result.Should().BeFalse();
@@ -61,7 +71,7 @@ namespace Steeltoe.Informers.InformersBase.Tests
             var sut = new Informable.ResetExtractor<int,int>();
             var items = new[]
             {
-                ResourceEvent.Create(EventTypeFlags.Modify, 1, 1, 1),
+                ResourceEvent.Create(EventTypeFlags.Modify, 1, 1),
             };
             var result = sut.ApplyEvent(items[0], out var reset);
             result.Should().BeFalse();
@@ -75,8 +85,8 @@ namespace Steeltoe.Informers.InformersBase.Tests
             var sut = new Informable.ResetExtractor<int,int>();
             var items = new[]
             {
-                ResourceEvent.Create(EventTypeFlags.ResetStart, 1, 1, 1),
-                ResourceEvent.Create(EventTypeFlags.Modify, 2, 2, 1)
+                ResourceEvent.Create(EventTypeFlags.ResetStart, 1, 1),
+                ResourceEvent.Create(EventTypeFlags.Modify, 2, 2)
             };
             var result = sut.ApplyEvent(items[0], out var reset);
             result.Should().BeFalse();
