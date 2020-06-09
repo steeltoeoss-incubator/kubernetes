@@ -27,18 +27,15 @@ steps:
   displayName: dotnet restore
   inputs:
     command: restore
-    projects: Steeltoe.Informers.sln
+    verbosityRestore: normal
 - task: DotNetCoreCLI@2
   displayName: dotnet build
   inputs:
     command: build
-    projects: Steeltoe.Informers.sln
     arguments: '--no-restore -c $(buildConfiguration) -v n' # /p:TreatWarningsAsErrors=True
 - task: DotNetCoreCLI@2
   displayName: dotnet test
   inputs:
     command: test
-    projects: Steeltoe.Informers.sln
-    arguments: '-c $(buildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Include="[Steeltoe.*]*" /p:Exclude="[*.Test*]*"'
+    arguments: '--no-build -c $(buildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Include="[Steeltoe.*]*" /p:Exclude="[*.Test*]*"'
     publishTestResults: true
-    nobuild: true
